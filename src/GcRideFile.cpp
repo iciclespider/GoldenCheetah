@@ -65,6 +65,9 @@ GcFileReader::openRideFile(QFile &file, QStringList &errors) const
         if (key == "NM adjust") {
             rideFile->setNmAdjust(value.toDouble());
         }
+        if (key == "PI adjust") {
+            rideFile->setNmAdjust(value.toDouble() * 0.11298482933);
+        }
     }
 
     QVector<double> intervalStops; // used to set the interval number for each point
