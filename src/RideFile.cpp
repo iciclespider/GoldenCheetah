@@ -234,7 +234,8 @@ void RideFile::appendPoint(double secs, double cad, double hr, double km,
                            double lon, double lat, double headwind, int interval)
 {
     dataPoints_.append(new RideFilePoint(secs, cad, hr, km, kph,
-                                         nm, watts, alt, lon, lat, headwind, interval));
+                                         nm, watts, alt, lon, lat, headwind, interval,
+                                         nmAdjust_));
     dataPresent.secs  |= (secs != 0);
     dataPresent.cad   |= (cad != 0);
     dataPresent.hr    |= (hr != 0);

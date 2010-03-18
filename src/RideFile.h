@@ -45,12 +45,24 @@ struct RideFilePoint
 {
     double secs, cad, hr, km, kph, nm, watts, alt, lon, lat, headwind;;
     int interval;
+    double nm_org, watts_org;
     RideFilePoint() : secs(0.0), cad(0.0), hr(0.0), km(0.0), kph(0.0),
-        nm(0.0), watts(0.0), alt(0.0), lon(0.0), lat(0.0), headwind(0.0), interval(0) {}
+        nm(0.0), watts(0.0), alt(0.0), lon(0.0), lat(0.0), headwind(0.0), interval(0),
+        nm_org(0.0), watts_org(0.0) {}
     RideFilePoint(double secs, double cad, double hr, double km, double kph,
-                  double nm, double watts, double alt, double lon, double lat, double headwind, int interval) :
+                  double nm, double watts, double alt, double lon, double lat, double headwind, int interval,
+                  double nmAdjust) :
         secs(secs), cad(cad), hr(hr), km(km), kph(kph), nm(nm),
-        watts(watts), alt(alt), lon(lon), lat(lat), headwind(headwind), interval(interval) {}
+        watts(watts), alt(alt), lon(lon), lat(lat), headwind(headwind), interval(interval),
+        nm_org(nm), watts_org(watts) {
+            setNmAdjust(nmAdjust);
+    }
+    void setNmAdjust(double nmAdjust) {
+        if (nm_org != 0) {
+            nm = nm_org + nmAdjust;
+            watts = watts_org * (nm / nm_org);
+        }
+    }
 };
 
 struct RideFileDataPresent
@@ -81,13 +93,14 @@ class RideFile
         RideFileDataPresent dataPresent;
         QString deviceType_;
         QList<RideFileInterval> intervals_;
+        double nmAdjust_;      // adjustment of torque newton meters
 
     public:
 
-        RideFile() : recIntSecs_(0.0), deviceType_("unknown") {}
+ RideFile() : recIntSecs_(0.0), deviceType_("unknown"), nmAdjust_(0.0) {}
         RideFile(const QDateTime &startTime, double recIntSecs) :
             startTime_(startTime), recIntSecs_(recIntSecs),
-            deviceType_("unknown") {}
+            deviceType_("unknown"), nmAdjust_(0.0) {}
 
         virtual ~RideFile() {
             foreach(RideFilePoint *point, dataPoints_)
@@ -99,10 +112,17 @@ class RideFile
         const QVector<RideFilePoint*> dataPoints() const { return dataPoints_; }
         inline const RideFileDataPresent *areDataPresent() const { return &dataPresent; }
         const QString &deviceType() const { return deviceType_; }
+        double nmAdjust() const { return nmAdjust_; }
 
         void setStartTime(const QDateTime &value) { startTime_ = value; }
         void setRecIntSecs(double value) { recIntSecs_ = value; }
         void setDeviceType(const QString &value) { deviceType_ = value; }
+        void setNmAdjust(double nmAdjust) {
+            nmAdjust_ = nmAdjust;
+            foreach (RideFilePoint *point, dataPoints_) {
+                point->setNmAdjust(nmAdjust);
+            }
+        }
 
         void appendPoint(double secs, double cad, double hr, double km,
                          double kph, double nm, double watts, double alt,
