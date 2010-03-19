@@ -18,6 +18,9 @@
 
 #include "GcRideFile.h"
 #include <algorithm> // for std::sort
+#include <QXmlSimpleReader>
+#include <QXmlInputSource>
+#include <QXmlDefaultHandler>
 #include <QDomDocument>
 #include <QVector>
 #include <assert.h>
@@ -28,106 +31,122 @@ static int gcFileReaderRegistered =
     RideFileFactory::instance().registerReader(
         "gc", "GoldenCheetah Native Format", new GcFileReader());
 
-RideFile *
-GcFileReader::openRideFile(QFile &file, QStringList &errors) const
+class GcXmlHandler: public QXmlDefaultHandler
 {
-    QDomDocument doc("GoldenCheetah");
-    if (!file.open(QIODevice::ReadOnly)) {
-        errors << "Could not open file.";
-        return NULL;
+    private:
+        RideFile *rideFile;
+        QStringList &errors;
+        QString group;
+        QVector<double> intervalStops; // used to set the interval number for each point
+        int interval;
+        bool recIntSet;
+    public:
+        GcXmlHandler(RideFile *rideFile, QStringList &errors) : rideFile(rideFile), errors(errors) {}
+        bool startElement(const QString&, const QString&, const QString&, const QXmlAttributes&);
+        bool hasSamples() { return recIntSet; }
+};
+
+bool
+GcXmlHandler::startElement(const QString &, const QString &localName, const QString &, const QXmlAttributes &atts)
+{
+    if (localName == "attributes") {
+        group = localName;
+        return TRUE;
+    }
+    if (localName == "intervals") {
+        group = localName;
+        return TRUE;
+    }
+    if (localName == "samples") {
+        group = localName;
+        std::sort(intervalStops.begin(), intervalStops.end()); // just in case
+        interval = 0;
+        recIntSet = false;
+        return TRUE;
     }
 
-    bool parsed = doc.setContent(&file);
-    file.close();
-    if (!parsed) {
-        errors << "Could not parse file.";
-        return NULL;
-    }
-
-    RideFile *rideFile = new RideFile();
-    QDomElement root = doc.documentElement();
-    QDomNode attributes = root.firstChildElement("attributes");
-
-    for (QDomElement attr = attributes.firstChildElement("attribute");
-         !attr.isNull(); attr = attr.nextSiblingElement("attribute")) {
-        QString key = attr.attribute("key");
-        QString value = attr.attribute("value");
-        if (key == "Device type")
+    if (group == "attributes" && localName == "attribute") {
+        QString key = atts.value("key");
+        QString value = atts.value("value");
+        if (key == "Device type") {
             rideFile->setDeviceType(value);
-        if (key == "Start time") {
+        } else if (key == "Start time") {
             // by default QDateTime is localtime - the source however is UTC
             QDateTime aslocal = QDateTime::fromString(value, DATETIME_FORMAT);
             // construct in UTC so we can honour the conversion to localtime
             QDateTime asUTC = QDateTime(aslocal.date(), aslocal.time(), Qt::UTC);
             // now set in localtime
             rideFile->setStartTime(asUTC.toLocalTime());
-        }
-        if (key == "NM adjust") {
+        } else if (key == "NM adjust") {
             rideFile->setNmAdjust(value.toDouble());
-        }
-        if (key == "PI adjust") {
+        } else if (key == "PI adjust") {
             rideFile->setNmAdjust(value.toDouble() * 0.11298482933);
         }
+        return TRUE;
     }
 
-    QVector<double> intervalStops; // used to set the interval number for each point
-    RideFileInterval add;          // used to add each named interval to RideFile
-    QDomNode intervals = root.firstChildElement("intervals");
-    if (!intervals.isNull()) {
-        for (QDomElement interval = intervals.firstChildElement("interval");
-             !interval.isNull(); interval = interval.nextSiblingElement("interval")) {
-
-            // record the stops for old-style datapoint interval numbering
-            double stop = interval.attribute("stop").toDouble();
-            intervalStops.append(stop);
-
-            // add a new interval to the new-style interval ranges
-            add.stop = stop;
-            add.start = interval.attribute("start").toDouble();
-            add.name = interval.attribute("name");
-            rideFile->addInterval(add.start, add.stop, add.name);
-        }
+    if (group == "intervals" && localName == "interval") {
+        // record the stops for old-style datapoint interval numbering
+        double stop = atts.value("stop").toDouble();
+        intervalStops.append(stop);
+        rideFile->addInterval(atts.value("start").toDouble(), stop, atts.value("name"));
+        return TRUE;
     }
-    std::sort(intervalStops.begin(), intervalStops.end()); // just in case
-    int interval = 0;
 
-    QDomElement samples = root.firstChildElement("samples");
-    if (samples.isNull()) {
-        errors << "no sample section in ride file";
+    if (group == "samples" && localName == "sample") {
+        double secs = atts.value("secs").toDouble();
+        double cad = atts.value("cad").toDouble();
+	double hr = atts.value("hr").toDouble();
+	double km = atts.value("km").toDouble();
+	double kph = atts.value("kph").toDouble();
+	double nm = atts.value("nm").toDouble();
+	double watts = atts.value("watts").toDouble();
+	double alt = atts.value("alt").toDouble();
+	double lon = atts.value("lon").toDouble();
+	double lat = atts.value("lat").toDouble();
+	double headwind = 0.0;
+	while ((interval < intervalStops.size()) && (secs >= intervalStops[interval])) {
+	    ++interval;
+	}
+	rideFile->appendPoint(secs, cad, hr, km, kph, nm, watts, alt, lon, lat, headwind, interval);
+	if (!recIntSet) {
+	    rideFile->setRecIntSecs(atts.value("len").toDouble());
+	    recIntSet = true;
+	}
+	return TRUE;
+    }
+
+    return TRUE;
+}
+
+
+RideFile *
+GcFileReader::openRideFile(QFile &file, QStringList &errors) const
+{
+    if (!file.open(QIODevice::ReadOnly)) {
+        errors << "Could not open file.";
         return NULL;
     }
-
-    bool recIntSet = false;
-    for (QDomElement sample = samples.firstChildElement("sample");
-         !sample.isNull(); sample = sample.nextSiblingElement("sample")) {
-        double secs, cad, hr, km, kph, nm, watts, alt, lon, lat;
-        double headwind = 0.0;
-        secs = sample.attribute("secs", "0.0").toDouble();
-        cad = sample.attribute("cad", "0.0").toDouble();
-        hr = sample.attribute("hr", "0.0").toDouble();
-        km = sample.attribute("km", "0.0").toDouble();
-        kph = sample.attribute("kph", "0.0").toDouble();
-        nm = sample.attribute("nm", "0.0").toDouble();
-        watts = sample.attribute("watts", "0.0").toDouble();
-        alt = sample.attribute("alt", "0.0").toDouble();
-        lon = sample.attribute("lon", "0.0").toDouble();
-        lat = sample.attribute("lat", "0.0").toDouble();
-        while ((interval < intervalStops.size()) && (secs >= intervalStops[interval]))
-            ++interval;
-        rideFile->appendPoint(secs, cad, hr, km, kph, nm, watts, alt, lon, lat, headwind, interval);
-        if (!recIntSet) {
-            rideFile->setRecIntSecs(sample.attribute("len").toDouble());
-            recIntSet = true;
-        }
+    RideFile *rideFile = new RideFile();
+    GcXmlHandler handler(rideFile, errors);
+    QXmlSimpleReader reader;
+    reader.setContentHandler(&handler);
+    QXmlInputSource source(&file);
+    bool parsed = reader.parse(source);
+    file.close();
+    if (!parsed) {
+        delete rideFile;
+	errors << "Could not parse file.";
+	return NULL;
     }
-
-    if (!recIntSet) {
-        errors << "no samples in ride file";
-        return NULL;
+    if (!handler.hasSamples()) {
+        delete rideFile;
+	errors << "No samples in ride file.";
+	return NULL;
     }
-
     return rideFile;
 }
+
 
 #define add_sample(name) \
     if (present->name) \
