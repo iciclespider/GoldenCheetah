@@ -97,7 +97,7 @@ class RideFile
 
     public:
 
- RideFile() : recIntSecs_(0.0), deviceType_("unknown"), nmAdjust_(0.0) {}
+        RideFile() : recIntSecs_(0.0), deviceType_("unknown"), nmAdjust_(0.0) {}
         RideFile(const QDateTime &startTime, double recIntSecs) :
             startTime_(startTime), recIntSecs_(recIntSecs),
             deviceType_("unknown"), nmAdjust_(0.0) {}
