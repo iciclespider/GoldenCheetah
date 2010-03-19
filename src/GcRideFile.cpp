@@ -96,24 +96,24 @@ GcXmlHandler::startElement(const QString &, const QString &localName, const QStr
     if (group == "samples" && localName == "sample") {
         double secs = atts.value("secs").toDouble();
         double cad = atts.value("cad").toDouble();
-	double hr = atts.value("hr").toDouble();
-	double km = atts.value("km").toDouble();
-	double kph = atts.value("kph").toDouble();
-	double nm = atts.value("nm").toDouble();
-	double watts = atts.value("watts").toDouble();
-	double alt = atts.value("alt").toDouble();
-	double lon = atts.value("lon").toDouble();
-	double lat = atts.value("lat").toDouble();
-	double headwind = 0.0;
-	while ((interval < intervalStops.size()) && (secs >= intervalStops[interval])) {
-	    ++interval;
-	}
-	rideFile->appendPoint(secs, cad, hr, km, kph, nm, watts, alt, lon, lat, headwind, interval);
-	if (!recIntSet) {
-	    rideFile->setRecIntSecs(atts.value("len").toDouble());
-	    recIntSet = true;
-	}
-	return TRUE;
+        double hr = atts.value("hr").toDouble();
+        double km = atts.value("km").toDouble();
+        double kph = atts.value("kph").toDouble();
+        double nm = atts.value("nm").toDouble();
+        double watts = atts.value("watts").toDouble();
+        double alt = atts.value("alt").toDouble();
+        double lon = atts.value("lon").toDouble();
+        double lat = atts.value("lat").toDouble();
+        double headwind = 0.0;
+        while ((interval < intervalStops.size()) && (secs >= intervalStops[interval])) {
+            ++interval;
+        }
+        rideFile->appendPoint(secs, cad, hr, km, kph, nm, watts, alt, lon, lat, headwind, interval);
+        if (!recIntSet) {
+            rideFile->setRecIntSecs(atts.value("len").toDouble());
+            recIntSet = true;
+        }
+        return TRUE;
     }
 
     return TRUE;
@@ -136,13 +136,13 @@ GcFileReader::openRideFile(QFile &file, QStringList &errors) const
     file.close();
     if (!parsed) {
         delete rideFile;
-	errors << "Could not parse file.";
-	return NULL;
+        errors << "Could not parse file.";
+        return NULL;
     }
     if (!handler.hasSamples()) {
         delete rideFile;
-	errors << "No samples in ride file.";
-	return NULL;
+        errors << "No samples in ride file.";
+        return NULL;
     }
     return rideFile;
 }
