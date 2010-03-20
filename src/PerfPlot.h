@@ -41,7 +41,7 @@ class TimeScaleDraw: public QwtScaleDraw
 	    }
 	virtual QwtText label(double v) const
 	{
-	    QDateTime upTime = baseTime.addDays((int)v);
+	    QDateTime upTime = baseTime.addDays((int)v - 1);
 	    return upTime.toString(format);
 	}
     private:
