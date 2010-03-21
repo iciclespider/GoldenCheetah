@@ -18,11 +18,9 @@
 
 #include "GcRideFile.h"
 #include <algorithm> // for std::sort
-#include <QXmlSimpleReader>
-#include <QXmlInputSource>
-#include <QXmlDefaultHandler>
-#include <QDomDocument>
+#include <QXmlStreamReader>
 #include <QVector>
+#include <QDomDocument>
 #include <assert.h>
 
 #define DATETIME_FORMAT "yyyy/MM/dd hh:mm:ss' UTC'"
@@ -31,115 +29,102 @@ static int gcFileReaderRegistered =
     RideFileFactory::instance().registerReader(
         "gc", "GoldenCheetah Native Format", new GcFileReader());
 
-class GcXmlHandler: public QXmlDefaultHandler
-{
-    private:
-        RideFile *rideFile;
-        QStringList &errors;
-        QString group;
-        QVector<double> intervalStops; // used to set the interval number for each point
-        int interval;
-        bool recIntSet;
-    public:
-        GcXmlHandler(RideFile *rideFile, QStringList &errors) : rideFile(rideFile), errors(errors) {}
-        bool startElement(const QString&, const QString&, const QString&, const QXmlAttributes&);
-        bool hasSamples() { return recIntSet; }
-};
-
-bool
-GcXmlHandler::startElement(const QString &, const QString &localName, const QString &, const QXmlAttributes &atts)
-{
-    if (localName == "attributes") {
-        group = localName;
-        return TRUE;
-    }
-    if (localName == "intervals") {
-        group = localName;
-        return TRUE;
-    }
-    if (localName == "samples") {
-        group = localName;
-        std::sort(intervalStops.begin(), intervalStops.end()); // just in case
-        interval = 0;
-        recIntSet = false;
-        return TRUE;
-    }
-
-    if (group == "attributes" && localName == "attribute") {
-        QString key = atts.value("key");
-        QString value = atts.value("value");
-        if (key == "Device type") {
-            rideFile->setDeviceType(value);
-        } else if (key == "Start time") {
-            // by default QDateTime is localtime - the source however is UTC
-            QDateTime aslocal = QDateTime::fromString(value, DATETIME_FORMAT);
-            // construct in UTC so we can honour the conversion to localtime
-            QDateTime asUTC = QDateTime(aslocal.date(), aslocal.time(), Qt::UTC);
-            // now set in localtime
-            rideFile->setStartTime(asUTC.toLocalTime());
-        } else if (key == "NM adjust") {
-            rideFile->setNmAdjust(value.toDouble());
-        } else if (key == "PI adjust") {
-            rideFile->setNmAdjust(value.toDouble() * 0.11298482933);
-        }
-        return TRUE;
-    }
-
-    if (group == "intervals" && localName == "interval") {
-        // record the stops for old-style datapoint interval numbering
-        double stop = atts.value("stop").toDouble();
-        intervalStops.append(stop);
-        rideFile->addInterval(atts.value("start").toDouble(), stop, atts.value("name"));
-        return TRUE;
-    }
-
-    if (group == "samples" && localName == "sample") {
-        double secs = atts.value("secs").toDouble();
-        double cad = atts.value("cad").toDouble();
-        double hr = atts.value("hr").toDouble();
-        double km = atts.value("km").toDouble();
-        double kph = atts.value("kph").toDouble();
-        double nm = atts.value("nm").toDouble();
-        double watts = atts.value("watts").toDouble();
-        double alt = atts.value("alt").toDouble();
-        double lon = atts.value("lon").toDouble();
-        double lat = atts.value("lat").toDouble();
-        double headwind = 0.0;
-        while ((interval < intervalStops.size()) && (secs >= intervalStops[interval])) {
-            ++interval;
-        }
-        rideFile->appendPoint(secs, cad, hr, km, kph, nm, watts, alt, lon, lat, headwind, interval);
-        if (!recIntSet) {
-            rideFile->setRecIntSecs(atts.value("len").toDouble());
-            recIntSet = true;
-        }
-        return TRUE;
-    }
-
-    return TRUE;
-}
-
 
 RideFile *
 GcFileReader::openRideFile(QFile &file, QStringList &errors) const
 {
-    if (!file.open(QIODevice::ReadOnly)) {
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         errors << "Could not open file.";
         return NULL;
     }
+    QXmlStreamReader reader(&file);
+    
     RideFile *rideFile = new RideFile();
-    GcXmlHandler handler(rideFile, errors);
-    QXmlSimpleReader reader;
-    reader.setContentHandler(&handler);
-    QXmlInputSource source(&file);
-    bool parsed = reader.parse(source);
-    file.close();
-    if (!parsed) {
+    QStringRef group;
+    QVector<double> intervalStops; // used to set the interval number for each point
+    RideFileInterval add;          // used to add each named interval to RideFile
+    int interval;
+    bool recIntSet;
+
+    while (!reader.atEnd()) {
+        reader.readNext();
+	if (!reader.isStartElement()) {
+	  continue;
+	}
+	QStringRef name = reader.name();
+	if (name == "attributes") {
+	  group = name;
+	  continue;
+	}
+	if (name == "intervals") {
+	  group = name;
+	  continue;
+	}
+	if (name == "samples") {
+	  group = name;
+	  std::sort(intervalStops.begin(), intervalStops.end()); // just in case
+	  interval = 0;
+	  recIntSet = false;
+	  continue;
+	}
+
+	if (group == "attributes" && name == "attribute") {
+	  QStringRef key = reader.attributes().value("key");
+	  QStringRef value = reader.attributes().value("value");
+	  if (key == "Device type") {
+            rideFile->setDeviceType(value.toString());
+	  } else if (key == "Start time") {
+            // by default QDateTime is localtime - the source however is UTC
+            QDateTime aslocal = QDateTime::fromString(value.toString(), DATETIME_FORMAT);
+            // construct in UTC so we can honour the conversion to localtime
+            QDateTime asUTC = QDateTime(aslocal.date(), aslocal.time(), Qt::UTC);
+            // now set in localtime
+            rideFile->setStartTime(asUTC.toLocalTime());
+	  } else if (key == "NM adjust") {
+            rideFile->setNmAdjust(value.toString().toDouble());
+	  } else if (key == "PI adjust") {
+            rideFile->setNmAdjust(value.toString().toDouble() * 0.11298482933);
+	  }
+	  continue;
+	}
+
+	if (group == "intervals" && name == "interval") {
+	  // record the stops for old-style datapoint interval numbering
+	  double stop = reader.attributes().value("stop").toString().toDouble();
+	  intervalStops.append(stop);
+	  rideFile->addInterval(reader.attributes().value("start").toString().toDouble(), stop, reader.attributes().value("name").toString());
+	  continue;
+	}
+
+	if (group == "samples" && name == "sample") {
+	  double secs = reader.attributes().value("secs").toString().toDouble();
+	  double cad = reader.attributes().value("cad").toString().toDouble();
+	  double hr = reader.attributes().value("hr").toString().toDouble();
+	  double km = reader.attributes().value("km").toString().toDouble();
+	  double kph = reader.attributes().value("kph").toString().toDouble();
+	  double nm = reader.attributes().value("nm").toString().toDouble();
+	  double watts = reader.attributes().value("watts").toString().toDouble();
+	  double alt = reader.attributes().value("alt").toString().toDouble();
+	  double lon = reader.attributes().value("lon").toString().toDouble();
+	  double lat = reader.attributes().value("lat").toString().toDouble();
+	  double headwind = 0.0;
+	  while ((interval < intervalStops.size()) && (secs >= intervalStops[interval])) {
+            ++interval;
+	  }
+	  rideFile->appendPoint(secs, cad, hr, km, kph, nm, watts, alt, lon, lat, headwind, interval);
+	  if (!recIntSet) {
+            rideFile->setRecIntSecs(reader.attributes().value("len").toString().toDouble());
+            recIntSet = true;
+	  }
+	  continue;
+	}
+    }
+    if (reader.hasError()) {
         delete rideFile;
-        errors << "Could not parse file.";
+        errors << "Could not parse file: " << reader.errorString();
         return NULL;
     }
-    if (!handler.hasSamples()) {
+    if (!recIntSet) {
         delete rideFile;
         errors << "No samples in ride file.";
         return NULL;
