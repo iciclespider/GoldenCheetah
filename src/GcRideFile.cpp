@@ -124,11 +124,6 @@ GcFileReader::openRideFile(QFile &file, QStringList &errors) const
         errors << "Could not parse file: " << reader.errorString();
         return NULL;
     }
-    if (!recIntSet) {
-        delete rideFile;
-        errors << "No samples in ride file.";
-        return NULL;
-    }
     return rideFile;
 }
 
