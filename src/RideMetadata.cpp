@@ -326,10 +326,8 @@ FormField::editFinished()
     // Update special field
     if (definition.name == "Device") {
         main->rideItem()->ride()->setDeviceType(text);
-        main->notifyRideSelected();
     } else if (definition.name == "Recording Interval") {
         main->rideItem()->ride()->setRecIntSecs(text.toDouble());
-        main->notifyRideSelected();
     } else if (definition.name == "Start Date") {
         QDateTime current = main->rideItem()->ride()->startTime();
         QDate date(/* year*/text.mid(6,4).toInt(),
@@ -337,7 +335,6 @@ FormField::editFinished()
                    /* day */text.mid(0,2).toInt());
         QDateTime update = QDateTime(date, current.time());
         main->rideItem()->setStartTime(update);
-        main->notifyRideSelected();
     } else if (definition.name == "Start Time") {
         QDateTime current = main->rideItem()->ride()->startTime();
         QTime time(/* hours*/ text.mid(0,2).toInt(),
@@ -346,7 +343,6 @@ FormField::editFinished()
                    /* milliseconds */ text.mid(9,3).toInt());
         QDateTime update = QDateTime(current.date(), time);
         main->rideItem()->setStartTime(update);
-        main->notifyRideSelected();
     } else {
         if (sp.isMetric(definition.name) && enabled->isChecked()) {
 
@@ -364,10 +360,6 @@ FormField::editFinished()
             QMap<QString,QString> override;
             override.insert("value", text);
             main->rideItem()->ride()->metricOverrides.insert(sp.metricSymbol(definition.name), override);
-
-            // get widgets updated with new override
-	        main->rideItem()->computeMetricsTime = QDateTime(); // force refresh
-            main->notifyRideSelected();
         } else {
             // just update the tags QMap!
             main->rideItem()->ride()->setTag(definition.name, text);
@@ -376,6 +368,8 @@ FormField::editFinished()
 
     // rideFile is now dirty!
     main->rideItem()->setDirty(true);
+    main->rideItem()->computeMetricsTime = QDateTime(); // force refresh
+    main->notifyRideSelected();
 }
 
 void
@@ -410,7 +404,7 @@ FormField::stateChanged(int state)
         main->rideItem()->setDirty(true);
 
         // get refresh done, coz overrides state has changed
-	    main->rideItem()->computeMetricsTime = QDateTime();
+        main->rideItem()->computeMetricsTime = QDateTime();
         main->notifyRideSelected();
     }
 }
