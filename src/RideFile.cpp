@@ -249,3 +249,21 @@ void RideFile::appendPoint(double secs, double cad, double hr, double km,
     dataPresent.headwind |= (headwind != 0);
     dataPresent.interval |= (interval != 0);
 }
+
+void RideFile::setTag(QString name, QString value)
+{
+    tags_.insert(name, value);
+    if (name == "Torque Adjust") {
+        bool pi = value.endsWith("pi", Qt::CaseInsensitive);
+        if (pi || value.endsWith("nm", Qt::CaseInsensitive)) {
+            value = value.remove(value.length() - 2, 2);
+        }
+        nmAdjust_ = value.toDouble();
+        if (pi) {
+            nmAdjust_ *= 0.11298482933;
+        }
+        foreach (RideFilePoint *point, dataPoints_) {
+            point->setNmAdjust(nmAdjust_);
+        }
+    }
+}

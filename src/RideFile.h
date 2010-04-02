@@ -117,12 +117,6 @@ class RideFile
         void setStartTime(const QDateTime &value) { startTime_ = value; }
         void setRecIntSecs(double value) { recIntSecs_ = value; }
         void setDeviceType(const QString &value) { deviceType_ = value; }
-        void setNmAdjust(double nmAdjust) {
-            nmAdjust_ = nmAdjust;
-            foreach (RideFilePoint *point, dataPoints_) {
-                point->setNmAdjust(nmAdjust);
-            }
-        }
 
         void appendPoint(double secs, double cad, double hr, double km,
                          double kph, double nm, double watts, double alt,
@@ -146,7 +140,7 @@ class RideFile
 
         const QMap<QString,QString>& tags() const { return tags_; }
         QString getTag(QString name, QString fallback) { return tags_.value(name, fallback); }
-        void setTag(QString name, QString value) { tags_.insert(name, value); }
+        void setTag(QString name, QString value);
 
         QMap<QString,QMap<QString,QString> > metricOverrides;
         QMap<QString,QString> tags_;

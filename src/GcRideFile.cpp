@@ -161,6 +161,9 @@ GcFileReader::openRideFile(QFile &file, QStringList &errors) const
 #define add_sample(name) \
     if (present->name) \
         sample.setAttribute(#name, QString("%1").arg(point->name));
+#define add_sample_org(name, name_org)			\
+    if (present->name) \
+        sample.setAttribute(#name, QString("%1").arg(point->name_org));
 
 void
 GcFileReader::writeRideFile(const RideFile *ride, QFile &file) const
@@ -247,8 +250,8 @@ GcFileReader::writeRideFile(const RideFile *ride, QFile &file) const
             add_sample(hr);
             add_sample(km);
             add_sample(kph);
-            add_sample(nm);
-            add_sample(watts);
+            add_sample_org(nm, nm_org);
+            add_sample_org(watts, watts_org);
             add_sample(alt);
             add_sample(lon);
             add_sample(lat);
