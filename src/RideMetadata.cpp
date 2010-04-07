@@ -380,7 +380,6 @@ FormField::editFinished()
 
     // rideFile is now dirty!
     main->rideItem()->setDirty(true);
-    main->rideItem()->computeMetricsTime = QDateTime(); // force refresh
 }
 
 void
