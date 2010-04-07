@@ -93,6 +93,7 @@ class RideFile
         RideFileDataPresent dataPresent;
         QString deviceType_;
         QList<RideFileInterval> intervals_;
+        QString torqueAdjust_; // user entered torque adjust value
         double nmAdjust_;      // adjustment of torque newton meters
 
     public:
@@ -112,11 +113,13 @@ class RideFile
         const QVector<RideFilePoint*> dataPoints() const { return dataPoints_; }
         inline const RideFileDataPresent *areDataPresent() const { return &dataPresent; }
         const QString &deviceType() const { return deviceType_; }
+        const QString &torqueAdjust() const { return torqueAdjust_; }
         double nmAdjust() const { return nmAdjust_; }
 
         void setStartTime(const QDateTime &value) { startTime_ = value; }
         void setRecIntSecs(double value) { recIntSecs_ = value; }
         void setDeviceType(const QString &value) { deviceType_ = value; }
+        void setTorqueAdjust(const QString &value);
 
         void appendPoint(double secs, double cad, double hr, double km,
                          double kph, double nm, double watts, double alt,
@@ -140,7 +143,7 @@ class RideFile
 
         const QMap<QString,QString>& tags() const { return tags_; }
         QString getTag(QString name, QString fallback) { return tags_.value(name, fallback); }
-        void setTag(QString name, QString value);
+        void setTag(QString name, QString value) { tags_.insert(name, value); }
 
         QMap<QString,QMap<QString,QString> > metricOverrides;
         QMap<QString,QString> tags_;

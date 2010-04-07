@@ -34,6 +34,7 @@ SpecialFields::SpecialFields()
             << "Weight"       // in WKO and possibly others
             << "Device"       // RideFile::devicetype
             << "Device Info"  // in WKO and TCX and possibly others
+            << "Torque Adjust"// linked to RideFile::torqueAdjust
             ;
 
     // now add all the metric fields (for metric overrides)

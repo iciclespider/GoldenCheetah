@@ -250,20 +250,21 @@ void RideFile::appendPoint(double secs, double cad, double hr, double km,
     dataPresent.interval |= (interval != 0);
 }
 
-void RideFile::setTag(QString name, QString value)
+void RideFile::setTorqueAdjust(const QString &value)
 {
-    tags_.insert(name, value);
-    if (name == "Torque Adjust") {
-        bool pi = value.endsWith("pi", Qt::CaseInsensitive);
-        if (pi || value.endsWith("nm", Qt::CaseInsensitive)) {
-            value = value.remove(value.length() - 2, 2);
-        }
-        nmAdjust_ = value.toDouble();
+    torqueAdjust_ = value.trimmed();
+    // Allow the entered value to end with either "pi"
+    // for Pound Inch or with "nm" for Newtom Meter.
+    bool pi = torqueAdjust_.endsWith("pi", Qt::CaseInsensitive);
+    if (pi || torqueAdjust_.endsWith("nm", Qt::CaseInsensitive)) {
+        nmAdjust_ = torqueAdjust_.left(value.length() - 2).toDouble();
         if (pi) {
             nmAdjust_ *= 0.11298482933;
         }
-        foreach (RideFilePoint *point, dataPoints_) {
-            point->setNmAdjust(nmAdjust_);
-        }
+    } else {
+        nmAdjust_ = torqueAdjust_.toDouble();
+    }
+    foreach (RideFilePoint *point, dataPoints_) {
+        point->setNmAdjust(nmAdjust_);
     }
 }
