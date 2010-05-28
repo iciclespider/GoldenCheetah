@@ -36,7 +36,7 @@
 #include <qwt_arrow_button.h>
 
 AllPlotWindow::AllPlotWindow(MainWindow *mainWindow) :
-    QWidget(mainWindow), mainWindow(mainWindow)
+    QWidget(mainWindow), mainWindow(mainWindow), current(NULL)
 {
     QVBoxLayout *vlayout = new QVBoxLayout;
 
@@ -710,8 +710,11 @@ AllPlotWindow::setShowStack(int value)
         allPlot->hide();
 
         QVBoxLayout *vLayout = new QVBoxLayout();
-
         RideItem* rideItem = allPlot->rideItem;
+
+        // don't try and plot for null files
+        if (!rideItem || !rideItem->ride() || rideItem->ride()->dataPoints().isEmpty()) return;
+
         double duration = rideItem->ride()->dataPoints().last()->secs;
         double distance =  (allPlot->useMetricUnits ? 1 : MILES_PER_KM) * rideItem->ride()->dataPoints().last()->km;
         int nbplot;

@@ -26,6 +26,7 @@
 #include <sstream>
 #include <string>
 #include "RideFile.h"
+#include "MainWindow.h"
 
 class QMouseEvent;
 class RideItem;
@@ -39,14 +40,17 @@ class GoogleMapControl : public QWidget
 Q_OBJECT
 
  private:
+    MainWindow *main;
     QVBoxLayout *layout;
     QWebView *view;
     MainWindow *parent;
     GoogleMapControl();  // default ctor
+    int range;
     std::string CreatePolyLine();
     void CreateSubPolyLine(const std::vector<RideFilePoint> &points,
                            std::ostringstream &oss,
-                           QColor color);
+                           int avgPower);
+    std::string CreateMapToolTipJavaScript();
     std::string CreateIntervalMarkers();
     void loadRide();
     // the web browser is loading a page, do NOT start another load
@@ -54,7 +58,7 @@ Q_OBJECT
     // the ride has changed, load a new page
     bool newRideToLoad;
 
-    QColor GetColor(int cp, int watts);
+    QColor GetColor(int watts);
 
     // a GPS normalized vectory of ride data points,
     // when a GPS unit loses signal it seems to
