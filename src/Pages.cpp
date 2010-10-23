@@ -10,6 +10,8 @@
 #include "ColorButton.h"
 #include "SpecialFields.h"
 
+#include <QDebug>
+
 ConfigurationPage::ConfigurationPage(MainWindow *main) : main(main)
 {
     QTabWidget *tabs = new QTabWidget(this);
@@ -104,6 +106,28 @@ ConfigurationPage::ConfigurationPage(MainWindow *main) : main(main)
 	allRidesAscending->setCheckState(Qt::Unchecked);
     }
 
+    // garmin Smart Recording options
+    QVariant garminHWMark = settings->value(GC_GARMIN_HWMARK);
+    if (garminHWMark.isNull() || garminHWMark.toInt() == 0)
+      garminHWMark.setValue(25); // by default, set the threshold to 25 seconds
+    QGridLayout *garminLayout = new QGridLayout;
+    garminSmartRecord = new QCheckBox(tr("Use Garmin Smart Recording."), this);
+    QVariant isGarminSmartRecording = settings->value(GC_GARMIN_SMARTRECORD, Qt::Checked);
+    if (isGarminSmartRecording.toInt() > 0){
+      garminSmartRecord->setCheckState(Qt::Checked);
+    } else {
+      garminSmartRecord->setCheckState(Qt::Unchecked);
+    }
+    QLabel *garminHWLabel1 = new QLabel(tr("Smart Recording Threshold "));
+    QLabel *garminHWLabel2 = new QLabel(tr(" secs."));
+    garminHWMarkedit = new QLineEdit(garminHWMark.toString(),this);
+    garminHWMarkedit->setInputMask("009");
+    garminLayout->addWidget(garminSmartRecord);
+    garminLayout->addWidget(garminHWLabel1,1,0);
+    garminLayout->addWidget(garminHWMarkedit,1,1);
+    garminLayout->addWidget(garminHWLabel2,1,2);
+
+
     warningLabel = new QLabel(tr("Requires Restart To Take Effect"));
 
     langLayout = new QHBoxLayout;
@@ -166,6 +190,8 @@ ConfigurationPage::ConfigurationPage(MainWindow *main) : main(main)
     configLayout->addLayout(langLayout);
     configLayout->addLayout(unitLayout);
     configLayout->addWidget(allRidesAscending);
+    configLayout->addLayout(garminLayout);
+    //SmartRecord);
     configLayout->addLayout(crankLengthLayout);
     configLayout->addLayout(bsDaysLayout);
     configLayout->addLayout(bsModeLayout);
@@ -257,6 +283,7 @@ CyclistPage::saveClicked()
     // save zone config (other stuff is saved by configdialog)
     zonePage->saveClicked();
 }
+
 
 void
 ConfigurationPage::browseWorkoutDir()
@@ -843,10 +870,12 @@ MetadataPage::MetadataPage(MainWindow *main) : main(main)
     // setup maintenance pages using current config
     fieldsPage = new FieldsPage(this, fieldDefinitions);
     keywordsPage = new KeywordsPage(this, keywordDefinitions);
+    processorPage = new ProcessorPage(main);
 
     tabs = new QTabWidget(this);
     tabs->addTab(fieldsPage, tr("Fields"));
     tabs->addTab(keywordsPage, tr("Notes Keywords"));
+    tabs->addTab(processorPage, tr("Processing"));
 
     layout->addWidget(tabs);
 }
@@ -860,6 +889,9 @@ MetadataPage::saveClicked()
 
     // write to metadata.xml
     RideMetadata::serialize(main->home.absolutePath() + "/metadata.xml", keywordDefinitions, fieldDefinitions);
+
+    // save processors config
+    processorPage->saveClicked();
 }
 
 // little helper since we create/recreate combos
@@ -1216,6 +1248,81 @@ FieldsPage::getDefinitions(QList<FieldDefinition> &fieldList)
             add.type = ((QComboBox*)fields->itemWidget(item, 2))->currentIndex();
 
         fieldList.append(add);
+    }
+}
+
+//
+// Data processors config page
+//
+ProcessorPage::ProcessorPage(MainWindow *main) : main(main)
+{
+    // get the available processors
+    const DataProcessorFactory &factory = DataProcessorFactory::instance();
+    processors = factory.getProcessors();
+
+    QGridLayout *mainLayout = new QGridLayout(this);
+
+    processorTree = new QTreeWidget;
+    processorTree->headerItem()->setText(0, tr("Processor"));
+    processorTree->headerItem()->setText(1, tr("Apply"));
+    processorTree->headerItem()->setText(2, tr("Settings"));
+    processorTree->setColumnCount(3);
+    processorTree->setSelectionMode(QAbstractItemView::NoSelection);
+    processorTree->setEditTriggers(QAbstractItemView::SelectedClicked); // allow edit
+    processorTree->setUniformRowHeights(true);
+    processorTree->setIndentation(0);
+    processorTree->header()->resizeSection(0,150);
+
+    // iterate over all the processors and add an entry to the
+    QMapIterator<QString, DataProcessor*> i(processors);
+    i.toFront();
+    while (i.hasNext()) {
+        i.next();
+
+        QTreeWidgetItem *add;
+
+        add = new QTreeWidgetItem(processorTree->invisibleRootItem());
+        add->setFlags(add->flags() & ~Qt::ItemIsEditable);
+
+        // Processor Name
+        add->setText(0, i.key());
+
+        // Auto or Manual run?
+        QComboBox *comboButton = new QComboBox(this);
+        comboButton->addItem(tr("Manual"));
+        comboButton->addItem(tr("Auto"));
+        processorTree->setItemWidget(add, 1, comboButton);
+
+        QString configsetting = QString("dp/%1/apply").arg(i.key());
+        boost::shared_ptr<QSettings> settings = GetApplicationSettings();
+        if (settings->value(configsetting, "Manual").toString() == "Manual")
+            comboButton->setCurrentIndex(0);
+        else
+            comboButton->setCurrentIndex(1);
+
+        // Get and Set the Config Widget
+        DataProcessorConfig *config = i.value()->processorConfig(this);
+        config->readConfig();
+
+        processorTree->setItemWidget(add, 2, config);
+    }
+
+    mainLayout->addWidget(processorTree, 0,0);
+}
+
+void
+ProcessorPage::saveClicked()
+{
+    // call each processor config widget's saveConfig() to
+    // write away separately
+    boost::shared_ptr<QSettings> settings = GetApplicationSettings();
+    for (int i=0; i<processorTree->invisibleRootItem()->childCount(); i++) {
+        // auto or manual?
+        QString configsetting = QString("dp/%1/apply").arg(processorTree->invisibleRootItem()->child(i)->text(0));
+        QString apply = ((QComboBox*)(processorTree->itemWidget(processorTree->invisibleRootItem()->child(i), 1)))->currentIndex() ?
+                        "Auto" : "Manual";
+        settings->setValue(configsetting, apply);
+        ((DataProcessorConfig*)(processorTree->itemWidget(processorTree->invisibleRootItem()->child(i), 2)))->saveConfig();
     }
 }
 
@@ -1739,3 +1846,94 @@ CPPage::zonesChanged()
         }
     }
 }
+
+#ifdef GC_HAVE_LIBOAUTH
+//
+// Twitter Config page
+//
+TwitterPage::TwitterPage(QWidget *parent) : QWidget(parent)
+{
+    settings = GetApplicationSettings();
+    QTabWidget *tabs = new QTabWidget(this);
+    QWidget *twitter = new QWidget(this);
+    tabs->addTab(twitter, tr("Twitter Config"));
+    QHBoxLayout *twitterlayout = new QHBoxLayout(twitter);
+    authorizeButton = new QPushButton(tr("Authorize"));
+
+    QTextEdit *twitterInstructionsEdit = new QTextEdit(this);
+    twitterInstructionsEdit->setReadOnly(true);
+    twitterInstructionsEdit->setEnabled(false);
+    twitterInstructionsEdit->setPlainText(tr("Click the Authorize button. Your default browser will open to Twitter. "
+                                              "Once you have authorized Golden Cheetah access your Twitter account, "
+                                               "Copy/Paste PIN number from Twitter into PIN field. Click Save"));
+    twitterPinLabel = new QLabel(tr("Enter PIN: "),this);
+    twitterPIN = new QLineEdit(tr(""), this);
+
+    twitterlayout->addWidget(twitterInstructionsEdit);
+    twitterlayout->addWidget(authorizeButton);
+    twitterlayout->addWidget(twitterPinLabel);
+    twitterlayout->addWidget(twitterPIN);
+    connect(authorizeButton, SIGNAL(clicked()), this, SLOT(authorizeClicked()));
+}
+
+void TwitterPage::authorizeClicked()
+{
+    int rc;
+    char **rv = NULL;
+    QString token;
+    QString url = QString();
+    t_key = NULL;
+    t_secret = NULL;
+
+    const char *request_token_uri = "http://api.twitter.com/oauth/request_token";
+
+    char *req_url = NULL;
+    char *postarg = NULL;
+    char *reply   = NULL;
+    req_url = oauth_sign_url2(request_token_uri, NULL, OA_HMAC, NULL, GC_TWITTER_CONSUMER_KEY, GC_TWITTER_CONSUMER_SECRET, NULL, NULL);
+    reply = oauth_http_get(req_url,postarg);
+
+    rc = oauth_split_url_parameters(reply, &rv);
+    qsort(rv, rc, sizeof(char *), oauth_cmpstringp);
+    token = QString(rv[1]);
+    t_key  =strdup(&(rv[1][12]));
+    t_secret =strdup(&(rv[2][19]));
+    url = QString("http://api.twitter.com/oauth/authorize?");
+    url.append(token);
+    QDesktopServices::openUrl(QUrl(url));
+    if(rv) free(rv);
+}
+
+void TwitterPage::saveClicked()
+{
+    char *reply;
+    char *req_url;
+    char **rv = NULL;
+    char *postarg = NULL;
+    QString url = QString("http://api.twitter.com/oauth/access_token?a=b&oauth_verifier=");
+
+    QString strPin = twitterPIN->text();
+    if(strPin.size() == 0)
+        return;
+
+    url.append(strPin);
+
+    req_url = oauth_sign_url2(url.toLatin1(), NULL, OA_HMAC, NULL, GC_TWITTER_CONSUMER_KEY, GC_TWITTER_CONSUMER_SECRET, t_key, t_secret);
+    reply = oauth_http_get(req_url,postarg);
+
+    int rc = oauth_split_url_parameters(reply, &rv);
+
+    if(rc ==4)
+    {
+        qsort(rv, rc, sizeof(char *), oauth_cmpstringp);
+
+        const char *oauth_token = strdup(&(rv[0][12]));
+        const char *oauth_secret = strdup(&(rv[1][19]));
+
+        //Save Twitter oauth_token and oauth_secret;
+        settings->setValue(GC_TWITTER_TOKEN, oauth_token);
+        settings->setValue(GC_TWITTER_SECRET, oauth_secret);
+    }
+}
+#endif
+

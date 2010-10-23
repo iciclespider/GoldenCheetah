@@ -21,6 +21,13 @@
 #include "DeviceTypes.h"
 #include "DeviceConfiguration.h"
 #include "RideMetadata.h"
+#include "DataProcessor.h"
+
+#ifdef GC_HAVE_LIBOAUTH
+extern "C" {
+#include <oauth.h>
+}
+#endif
 
 class QGroupBox;
 class QHBoxLayout;
@@ -43,6 +50,8 @@ class ConfigurationPage : public QWidget
         QComboBox *unitCombo;
         QComboBox *crankLengthCombo;
         QCheckBox *allRidesAscending;
+        QCheckBox *garminSmartRecord;
+        QLineEdit *garminHWMarkedit;
         QLineEdit *BSdaysEdit;
         QComboBox *bsModeCombo;
         QLineEdit *workoutDirectory;
@@ -70,6 +79,7 @@ class ConfigurationPage : public QWidget
         QVBoxLayout *mainLayout;
         QGridLayout *bsDaysLayout;
         QHBoxLayout *bsModeLayout;
+        QGridLayout *garminLayout;
 };
 
 class CyclistPage : public QWidget
@@ -265,6 +275,30 @@ class FieldsPage : public QWidget
         QPushButton *upButton, *downButton, *addButton, *renameButton, *deleteButton;
 };
 
+class ProcessorPage : public QWidget
+{
+    Q_OBJECT
+
+    public:
+
+        ProcessorPage(MainWindow *main);
+        void saveClicked();
+
+    public slots:
+
+        //void upClicked();
+        //void downClicked();
+
+    protected:
+
+        MainWindow *main;
+        QMap<QString, DataProcessor*> processors;
+
+        QTreeWidget *processorTree;
+        //QPushButton *upButton, *downButton;
+
+};
+
 class MetadataPage : public QWidget
 {
     Q_OBJECT
@@ -285,6 +319,7 @@ class MetadataPage : public QWidget
         QTabWidget *tabs;
         KeywordsPage *keywordsPage;
         FieldsPage *fieldsPage;
+        ProcessorPage *processorPage;
 
         // local versions for modification
         QList<KeywordDefinition> keywordDefinitions;
@@ -367,6 +402,42 @@ class ZonePage : public QWidget
         QTabWidget *tabs;
 
         // local versions for modification
+};
+
+class TwitterPage : public QWidget
+{
+    Q_OBJECT
+
+    public:
+
+        TwitterPage(QWidget *parent = 0);
+
+        // Children talk to each other
+        SchemePage *schemePage;
+        CPPage *cpPage;
+        QLineEdit *twitterPIN;
+        void saveClicked();
+    public slots:
+
+#ifdef GC_HAVE_LIBOAUTH
+        void authorizeClicked();
+#endif
+
+    protected:
+
+        MainWindow *main;
+        bool changed;
+
+        QTabWidget *tabs;
+
+        // local versions for modification
+    private:
+        QLabel *twitterPinLabel;
+        QPushButton *authorizeButton;
+        char *t_key;
+        char *t_secret;
+        boost::shared_ptr<QSettings> settings;
+
 };
 
 #endif

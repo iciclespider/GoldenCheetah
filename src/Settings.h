@@ -73,6 +73,23 @@
 #define GC_DEV_DEFI  "devicedefi"
 #define GC_DEV_DEFR  "devicedefr"
 
+// data processor config
+#define GC_DPFG_TOLERANCE "dataprocess/fixgaps/tolerance"
+#define GC_DPFG_STOP      "dataprocess/fixgaps/stop"
+#define GC_DPFS_MAX       "dataprocess/fixspikes/max"
+#define GC_DPFS_VARIANCE  "dataprocess/fixspikes/variance"
+#define GC_DPTA           "dataprocess/torqueadjust/adjustment"
+
+//Twitter oauth keys
+#define GC_TWITTER_CONSUMER_KEY    "qbbmhDt8bG8ZBcT3r9nYw" //< consumer key
+#define GC_TWITTER_CONSUMER_SECRET "IWXu2G6mQC5xvhM8V0ohA0mPTUOqAFutiuKIva3LQg"
+#define GC_TWITTER_TOKEN "twitter_token"
+#define GC_TWITTER_SECRET "twitter_secret"
+
+// Tcx Smart recording
+#define GC_GARMIN_SMARTRECORD "garminSmartRecord"
+#define GC_GARMIN_HWMARK "garminHWMark"
+
 #include <QSettings>
 #include <boost/shared_ptr.hpp>
 

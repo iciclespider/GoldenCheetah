@@ -6,10 +6,21 @@ TEMPLATE = app
 TARGET = GoldenCheetah
 DEPENDPATH += .
 !isEmpty( BOOST_INCLUDE ) { INCLUDEPATH += $${BOOST_INCLUDE} }
-INCLUDEPATH += ../qwt/src
+INCLUDEPATH += ../qwt/src ../qxt/src
 QT += xml sql network webkit
 LIBS += ../qwt/lib/libqwt.a
 LIBS += -lm
+
+!isEmpty( LIBOAUTH_INSTALL ) {
+INCLUDEPATH += $${LIBOAUTH_INSTALL}/include
+LIBS +=  $${LIBOAUTH_INSTALL}/lib/liboauth.a
+LIBS += $${LIBCRYPTO_INSTALL}
+LIBS += $${LIBZ_INSTALL}
+LIBS += $${LIBCURL_INSTALL}
+DEFINES += GC_HAVE_LIBOAUTH
+SOURCES += TwitterDialog.cpp
+HEADERS += TwitterDialog.h
+}
 
 !isEmpty( D2XX_INCLUDE ) {
   INCLUDEPATH += $${D2XX_INCLUDE}
@@ -41,6 +52,19 @@ qwt3d {
   DEFINES += GC_HAVE_QWTPLOT3D
 }
 
+!isEmpty( KML_INSTALL) {
+    KML_INCLUDE = $${KML_INSTALL}/include/kml
+    KML_LIBS = $${KML_INSTALL}/lib/libkmldom.a \
+               $${KML_INSTALL}/lib/libkmlconvenience.a \
+               $${KML_INSTALL}/lib/libkmlengine.a \
+               $${KML_INSTALL}/lib/libkmlbase.a \
+
+    LIBS += $${KML_LIBS} $${KML_LIBS}
+    DEFINES += GC_HAVE_KML
+    SOURCES += KmlRideFile.cpp
+    HEADERS += KmlRideFile.h
+}
+
 macx {
     LIBS += -framework Carbon
 }
@@ -57,6 +81,11 @@ win32 {
     RC_FILE = windowsico.rc
 }
 
+# local qxt widgets - rather than add another dependency on libqxt
+DEFINES += QXT_STATIC
+SOURCES += ../qxt/src/qxtspanslider.cpp
+HEADERS += ../qxt/src/qxtspanslider.h ../qxt/src/qxtspanslider_p.h
+
 HEADERS += \
         Aerolab.h \
         AerolabWindow.h \
@@ -64,6 +93,7 @@ HEADERS += \
         AllPlotWindow.h \
         ANTplusController.h \
         BestIntervalDialog.h \
+        BinRideFile.h \
         ChooseCyclistDialog.h \
         Colors.h \
         ColorButton.h \
@@ -77,6 +107,7 @@ HEADERS += \
         DBAccess.h \
         DatePickerDialog.h \
         DaysScaleDraw.h \
+        DataProcessor.h \
         Device.h \
         DeviceTypes.h \
         DeviceConfiguration.h \
@@ -92,6 +123,7 @@ HEADERS += \
         LogTimeScaleEngine.h \
         LTMCanvasPicker.h \
         LTMChartParser.h \
+        LTMOutliers.h \
         LTMPlot.h \
         LTMSettings.h \
         LTMTool.h \
@@ -110,6 +142,7 @@ HEADERS += \
         PowerHist.h \
         PowerTapDevice.h \
         PowerTapUtil.h \
+        PwxRideFile.h \
         QuarqdClient.h \
         QuarqParser.h \
         QuarqRideFile.h \
@@ -120,7 +153,10 @@ HEADERS += \
         ComputrainerController.h \
         RealtimePlot.h \
         RideCalendar.h \
+        RideEditor.h \
         RideFile.h \
+        RideFileCommand.h \
+        RideFileTableModel.h \
         RideImportWizard.h \
         RideItem.h \
         RideMetadata.h \
@@ -141,6 +177,7 @@ HEADERS += \
         SummaryMetrics.h \
         TcxParser.h \
         TcxRideFile.h \
+        TxtRideFile.h \
         TimeUtils.h \
         ToolsDialog.h \
         TrainTabs.h \
@@ -162,6 +199,7 @@ SOURCES += \
         BasicRideMetrics.cpp \
         BestIntervalDialog.cpp \
         BikeScore.cpp \
+        BinRideFile.cpp \
         DanielsPoints.cpp \
         ChooseCyclistDialog.cpp \
         Colors.cpp \
@@ -174,6 +212,7 @@ SOURCES += \
         CriticalPowerWindow.cpp \
         CsvRideFile.cpp \
         DBAccess.cpp \
+        DataProcessor.cpp \
         DatePickerDialog.cpp \
         Device.cpp \
         DeviceTypes.cpp \
@@ -182,6 +221,10 @@ SOURCES += \
         ErgFile.cpp \
         ErgFilePlot.cpp \
         FitRideFile.cpp \
+        FixGaps.cpp \
+        FixGPS.cpp \
+        FixSpikes.cpp \
+        FixTorque.cpp \
         GcRideFile.cpp \
         GoogleMapControl.cpp \
         HistogramWindow.cpp \
@@ -190,6 +233,7 @@ SOURCES += \
         LogTimeScaleEngine.cpp \
         LTMCanvasPicker.cpp \
         LTMChartParser.cpp \
+        LTMOutliers.cpp \
         LTMPlot.cpp \
         LTMSettings.cpp \
         LTMTool.cpp \
@@ -209,6 +253,7 @@ SOURCES += \
         PowerHist.cpp \
         PowerTapDevice.cpp \
         PowerTapUtil.cpp \
+        PwxRideFile.cpp \
         QuarqdClient.cpp \
         QuarqParser.cpp \
         QuarqRideFile.cpp \
@@ -219,7 +264,10 @@ SOURCES += \
         RealtimeWindow.cpp \
         RealtimePlot.cpp \
         RideCalendar.cpp \
+        RideEditor.cpp \
         RideFile.cpp \
+        RideFileCommand.cpp \
+        RideFileTableModel.cpp \
         RideImportWizard.cpp \
         RideItem.cpp \
         RideMetadata.cpp \
@@ -236,8 +284,10 @@ SOURCES += \
         SrdRideFile.cpp \
         SrmRideFile.cpp \
         StressCalculator.cpp \
+	TacxCafRideFile.cpp \
         TcxParser.cpp \
         TcxRideFile.cpp \
+        TxtRideFile.cpp \
         TimeInZone.cpp \
         TimeUtils.cpp \
         ToolsDialog.cpp \

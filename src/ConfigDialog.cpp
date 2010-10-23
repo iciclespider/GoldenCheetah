@@ -44,11 +44,14 @@ ConfigDialog::ConfigDialog(QDir _home, Zones *_zones, MainWindow *mainWindow) :
 
     configPage = new ConfigurationPage(mainWindow);
     devicePage = new DevicePage(this);
-
     pagesWidget = new QStackedWidget;
     pagesWidget->addWidget(configPage);
     pagesWidget->addWidget(cyclistPage);
     pagesWidget->addWidget(devicePage);
+    #ifdef GC_HAVE_LIBOAUTH
+    twitterPage = new TwitterPage(this);
+    pagesWidget->addWidget(twitterPage);
+    #endif
 
     closeButton = new QPushButton(tr("Close"));
     saveButton = new QPushButton(tr("Save"));
@@ -114,6 +117,14 @@ void ConfigDialog::createIcons()
     realtimeButton->setTextAlignment(Qt::AlignHCenter);
     realtimeButton->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
 
+#ifdef GC_HAVE_LIBOAUTH
+    QListWidgetItem *twitterButton = new QListWidgetItem(contentsWidget);
+    twitterButton->setIcon(QIcon(":images/twitter.png"));
+    twitterButton->setText(tr("Twitter"));
+    twitterButton->setTextAlignment(Qt::AlignHCenter);
+    twitterButton->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+#endif
+
     connect(contentsWidget,
             SIGNAL(currentItemChanged(QListWidgetItem *, QListWidgetItem *)),
             this, SLOT(changePage(QListWidgetItem *, QListWidgetItem*)));
@@ -150,6 +161,8 @@ void ConfigDialog::save_Clicked()
         settings->setValue(GC_UNIT, "Imperial");
 
     settings->setValue(GC_ALLRIDES_ASCENDING, configPage->allRidesAscending->checkState());
+    settings->setValue(GC_GARMIN_SMARTRECORD, configPage->garminSmartRecord->checkState());
+    settings->setValue(GC_GARMIN_HWMARK, configPage->garminHWMarkedit->text());
     settings->setValue(GC_CRANKLENGTH, configPage->crankLengthCombo->currentText());
     settings->setValue(GC_BIKESCOREDAYS, configPage->BSdaysEdit->text());
     settings->setValue(GC_BIKESCOREMODE, configPage->bsModeCombo->currentText());
@@ -174,6 +187,10 @@ void ConfigDialog::save_Clicked()
     // save interval metrics and ride data pages
     configPage->saveClicked();
 
+#ifdef GC_HAVE_LIBOAUTH
+    //Call Twitter Save Dialog to get Access Token
+    twitterPage->saveClicked();
+#endif
     // Save the device configuration...
     DeviceConfigurations all;
     all.writeConfig(devicePage->deviceListModel->Configuration);

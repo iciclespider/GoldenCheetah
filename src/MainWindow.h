@@ -51,6 +51,7 @@ class PerformanceManagerWindow;
 class RideSummaryWindow;
 class ViewSelection;
 class TrainWindow;
+class RideEditor;
 
 class MainWindow : public QMainWindow 
 {
@@ -64,6 +65,7 @@ class MainWindow : public QMainWindow
         const RideItem *currentRideItem() { return ride; }
         const QTreeWidgetItem *allRideItems() { return allRides; }
         const QTreeWidgetItem *allIntervalItems() { return allIntervals; }
+        QTreeWidget *intervalTreeWidget() { return intervalWidget; }
         QTreeWidgetItem *mutableIntervalItems() { return allIntervals; }
 	void getBSFactors(double &timeBS, double &distanceBS,
                           double &timeDP, double &distanceDP);
@@ -84,6 +86,8 @@ class MainWindow : public QMainWindow
                                     // signal emitted to notify its children
         void notifyRideSelected();  // used by RideItem to notify when
                                     // rideItem date/time changes
+        void notifyRideClean() { rideClean(); }
+        void notifyRideDirty() { rideDirty(); }
         void selectView(int);
 
         // db connections to cyclistdir/metricDB - one per active MainWindow
@@ -111,6 +115,8 @@ class MainWindow : public QMainWindow
         void viewChanged(int);
         void rideAdded(RideItem *);
         void rideDeleted(RideItem *);
+        void rideDirty();
+        void rideClean();
 
     private slots:
         void tabViewTriggered(bool);
@@ -123,8 +129,13 @@ class MainWindow : public QMainWindow
         void openCyclist();
         void downloadRide();
         void manualRide();
+        void exportPWX();
         void exportCSV();
         void exportGC();
+#ifdef GC_HAVE_KML
+        void exportKML();
+#endif
+        void manualProcess(QString);
         void importFile();
         void findBestIntervals();
         void addIntervalForPowerPeaksForSecs(RideFile *ride, int windowSizeSecs, QString name);
@@ -135,6 +146,7 @@ class MainWindow : public QMainWindow
         void aboutDialog();
         void notesChanged();
         void saveRide();                        // save current ride menu item
+        void revertRide();
         bool saveRideExitDialog();              // save dirty rides on exit dialog
         void saveNotes();
         void showOptions();
@@ -151,6 +163,9 @@ class MainWindow : public QMainWindow
         void frontInterval();
         void backInterval();
         void intervalEdited(QTreeWidgetItem *, int);
+#ifdef GC_HAVE_LIBOAUTH
+        void tweetRide();
+#endif
 
     protected: 
 
@@ -192,6 +207,7 @@ class MainWindow : public QMainWindow
         ModelWindow *modelWindow;
         AerolabWindow *aerolabWindow;
         GoogleMapControl *googleMap;
+        RideEditor *rideEdit;
         QTreeWidgetItem *allRides;
         QTreeWidgetItem *allIntervals;
         QSplitter *leftLayout;
@@ -218,6 +234,8 @@ class MainWindow : public QMainWindow
 	bool useMetricUnits;  // whether metric units are used (or imperial)
 
     QuarqdClient *client;
+
+    QSignalMapper *toolMapper;
 };
 
 #endif // _GC_MainWindow_h

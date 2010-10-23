@@ -221,7 +221,13 @@ FormField::FormField(FieldDefinition field, MainWindow *main) : definition(field
             widget = main->rideNotesWidget();
         } else {
             widget = new QTextEdit(this);
-            connect (widget, SIGNAL(textChanged()), this, SLOT(editFinished()));
+            if (field.name == "Change History") {
+                dynamic_cast<QTextEdit*>(widget)->setReadOnly(true);
+                // pick up when ride saved - since it gets updated then
+                connect (main, SIGNAL(rideClean()), this, SLOT(rideSelected()));
+            } else {
+                connect (widget, SIGNAL(textChanged()), this, SLOT(editFinished()));
+            }
         }
         break;
 
@@ -347,10 +353,6 @@ FormField::editFinished()
         QDateTime update = QDateTime(current.date(), time);
         main->rideItem()->setStartTime(update);
         main->notifyRideSelected();
-    } else if (definition.name == "Torque Adjust") {
-        main->rideItem()->ride()->setTorqueAdjust(text);
-        main->rideItem()->computeMetricsTime = QDateTime(); // force refresh
-        main->notifyRideSelected();
     } else {
         if (sp.isMetric(definition.name) && enabled->isChecked()) {
 
@@ -370,7 +372,7 @@ FormField::editFinished()
             main->rideItem()->ride()->metricOverrides.insert(sp.metricSymbol(definition.name), override);
 
             // get widgets updated with new override
-            main->rideItem()->computeMetricsTime = QDateTime(); // force refresh
+	        main->rideItem()->computeMetricsTime = QDateTime(); // force refresh
             main->notifyRideSelected();
         } else {
             // just update the tags QMap!
@@ -414,7 +416,7 @@ FormField::stateChanged(int state)
         main->rideItem()->setDirty(true);
 
         // get refresh done, coz overrides state has changed
-        main->rideItem()->computeMetricsTime = QDateTime();
+	    main->rideItem()->computeMetricsTime = QDateTime();
         main->notifyRideSelected();
     }
 }
@@ -435,7 +437,6 @@ FormField::rideSelected()
         else if (definition.name == "Recording Interval") value = QString("%1").arg(main->rideItem()->ride()->recIntSecs());
         else if (definition.name == "Start Date") value = main->rideItem()->ride()->startTime().date().toString("dd.MM.yyyy");
         else if (definition.name == "Start Time") value = main->rideItem()->ride()->startTime().time().toString("hh:mm:ss.zzz");
-        else if (definition.name == "Torque Adjust") value = main->rideItem()->ride()->torqueAdjust();
         else {
             if (sp.isMetric(definition.name)) {
                 //  get from metric overrides

@@ -6,6 +6,16 @@ BOOST_INSTALL = /usr/local/boost
 SRMIO_INSTALL = /usr/local/srmio
 D2XX_INCLUDE = /usr/local/include/D2XX
 
+# If you want Twitter support you must install liboauth
+# http://liboauth.sourceforge.net/
+# Set the path to where liboauth.a was installed
+# By default it will have been installed like this:
+#
+#LIBOAUTH_INSTALL = /usr/local
+#LIBCRYPTO_INSTALL = -lcrypto
+#LIBCURL_INSTALL=-lcurl
+#LIBZ_INSTALL=-lz
+
 # If you want 3D plotting, you need to install qwtplot3d
 #
 #  http://qwtplot3d.sourceforge.net/
@@ -13,6 +23,18 @@ D2XX_INCLUDE = /usr/local/include/D2XX
 # then set the following variable appropriately:
 
 #QWT3D_INSTALL = /usr/local/qwtplot3d
+
+# If you want support for Google Earth .kml files then you need
+# to install the Google libkml library
+#
+# http://code.google.com/p/libkml/
+# or on Linux sudo apt-get install libkml-dev
+#
+# then set the following variable appropriately
+# to the root of the libs/includ path
+
+#KML_INSTALL = /usr/local
+
 
 # We recommend a debug build for development, and a static build for releases.
 CONFIG += debug

@@ -1,5 +1,6 @@
 <!DOCTYPE RCC><RCC version="1.0">
  <qresource>
+    <file>images/twitter.png</file>
     <file>images/cyclist.png</file>
     <file>images/imetrics.png</file>
     <file>images/power.png</file>
@@ -12,5 +13,14 @@
     <file>translations/gc_ja.qm</file>
     <file>xml/charts.xml</file>
     <file>xml/metadata.xml</file>
+    <file>images/toolbar/close-icon.png</file>
+    <file>images/toolbar/save.png</file>
+    <file>images/toolbar/search.png</file>
+    <file>images/toolbar/splash green.png</file>
+    <file>images/toolbar/cut.png</file>
+    <file>images/toolbar/copy.png</file>
+    <file>images/toolbar/paste.png</file>
+    <file>images/toolbar/undo.png</file>
+    <file>images/toolbar/redo.png</file>
  </qresource>
 </RCC>
